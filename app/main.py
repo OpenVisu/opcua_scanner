@@ -163,7 +163,7 @@ def _handle_server(
 
     except UaStatusCodeError as error:  # type: ignore
         backend.set_server_error(
-            server_id, f"UaStatusCodeError({error.code})" % error.code, check_datetime)
+            server_id, f"UaStatusCodeError({error.code})", check_datetime)
     except socket.gaierror as error:
         backend.set_server_error(server_id, 'socket.gaierror', check_datetime)
     finally:
