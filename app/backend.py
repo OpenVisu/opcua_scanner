@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import requests
-from opcua.ua.uatypes import VariantType
+from asyncua.ua.uatypes import VariantType
 
 
 class Backend:
