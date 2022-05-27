@@ -84,7 +84,7 @@ async def _discover_children(node: Node, server_id: int, opcua_client: asyncua.C
         if node.nodeid.to_string() == 'i=84':
             path = '/'
         else:
-            path = '/' + '/'.join(node.get_path(as_string=True))
+            path = '/' + '/'.join(await node.get_path(as_string=True))
 
     except UaStatusCodeError as error:  # type: ignore
         path = f"UaStatusCodeError({error.code})"
@@ -98,12 +98,12 @@ async def _discover_children(node: Node, server_id: int, opcua_client: asyncua.C
     try:
         node_id: str = node.nodeid.to_string()
         node: Node = opcua_client.get_node(node_id)
-        writable = await AccessLevel.CurrentWrite in node.get_user_access_level()
-        readable = await AccessLevel.CurrentRead in node.get_user_access_level()
-        variant_type: VariantType = node.get_data_type_as_variant_type()
+        writable = AccessLevel.CurrentWrite in await node.get_user_access_level()
+        readable = AccessLevel.CurrentRead in await node.get_user_access_level()
+        variant_type: VariantType = await node.read_data_type_as_variant_type()
 
         try:
-            display_name: str = node.get_display_name().Text
+            display_name: str = (await node.read_display_name()).Text
         except UaStatusCodeError as error:  # type: ignore
             display_name = f"UaStatusCodeError({error.code})"
 
