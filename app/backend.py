@@ -114,7 +114,6 @@ class Backend:
         )
 
     def get_servers(self):
-        print(self.API_URL)
         response = requests.get(
             f'{self.API_URL}/api/server_manager/server/index?filter[scan_required]=1',
             headers=self._get_headers(),
