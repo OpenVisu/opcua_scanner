@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import requests
-from opcua.ua.uatypes import VariantType
+from asyncua.ua.uatypes import VariantType
 
 
 class Backend:
@@ -114,7 +114,6 @@ class Backend:
         )
 
     def get_servers(self):
-        print(self.API_URL)
         response = requests.get(
             f'{self.API_URL}/api/server_manager/server/index?filter[scan_required]=1',
             headers=self._get_headers(),

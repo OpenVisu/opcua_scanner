@@ -1,4 +1,20 @@
 #!/usr/local/bin/python3
+# Copyright (C) 2022 Robin Jespersen
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import asyncio
 import datetime
 import os
 import socket
@@ -7,11 +23,11 @@ from concurrent.futures import CancelledError
 
 import sentry_sdk
 
-import opcua
-from opcua import Node
-from opcua.ua import UaStatusCodeError
-from opcua.ua.uaerrors import BadNodeIdUnknown
-from opcua.ua.uatypes import AccessLevel, VariantType
+import asyncua
+from asyncua import Node
+from asyncua.ua import UaStatusCodeError
+from asyncua.ua.uaerrors import BadNodeIdUnknown
+from asyncua.ua.uatypes import AccessLevel, VariantType
 
 from backend import Backend
 
@@ -63,12 +79,12 @@ def _handle_extension_object(
         )
 
 
-def _discover_children(node: Node, server_id: int, opcua_client: opcua.Client, check_datetime: int) -> None:
+async def _discover_children(node: Node, server_id: int, opcua_client: asyncua.Client, check_datetime: int) -> None:
     try:
         if node.nodeid.to_string() == 'i=84':
             path = '/'
         else:
-            path = '/' + '/'.join(node.get_path(as_string=True))
+            path = '/' + '/'.join(await node.get_path(as_string=True))
 
     except UaStatusCodeError as error:  # type: ignore
         path = f"UaStatusCodeError({error.code})"
@@ -82,12 +98,12 @@ def _discover_children(node: Node, server_id: int, opcua_client: opcua.Client, c
     try:
         node_id: str = node.nodeid.to_string()
         node: Node = opcua_client.get_node(node_id)
-        writable = AccessLevel.CurrentWrite in node.get_user_access_level()
-        readable = AccessLevel.CurrentRead in node.get_user_access_level()
-        variant_type: VariantType = node.get_data_type_as_variant_type()
+        writable = AccessLevel.CurrentWrite in await node.get_user_access_level()
+        readable = AccessLevel.CurrentRead in await node.get_user_access_level()
+        variant_type: VariantType = await node.read_data_type_as_variant_type()
 
         try:
-            display_name: str = node.get_display_name().Text
+            display_name: str = (await node.read_display_name()).Text
         except UaStatusCodeError as error:  # type: ignore
             display_name = f"UaStatusCodeError({error.code})"
 
@@ -130,22 +146,22 @@ def _discover_children(node: Node, server_id: int, opcua_client: opcua.Client, c
         print('BrokenPipeError')
         print(error)
 
-    children = node.get_children()
+    children = await node.get_children()
     for child_node in children:
-        _discover_children(child_node, server_id, opcua_client, check_datetime)
+        await _discover_children(child_node, server_id, opcua_client, check_datetime)
 
 
-def _handle_server(
+async def _handle_server(
     server_id: int,
     server_url: str,
     root_node_id: str,
     check_datetime: int
 ):
-    opcua_client: opcua.Client = opcua.Client(server_url, timeout=30)
+    opcua_client: asyncua.Client = asyncua.Client(server_url, timeout=30)
 
     try:
-        opcua_client.connect()
-        opcua_client.load_type_definitions()
+        await opcua_client.connect()
+        await opcua_client.load_data_type_definitions()
 
         try:
             if root_node_id != '':
@@ -156,7 +172,7 @@ def _handle_server(
             if error.code == BadNodeIdUnknown.code:
                 root_node: Node = opcua_client.get_root_node()
 
-        _discover_children(root_node, server_id, opcua_client, check_datetime)
+        await _discover_children(root_node, server_id, opcua_client, check_datetime)
 
         backend.reset_server(server_id, check_datetime)
         backend.delete_outdated_nodes(server_id)
@@ -167,10 +183,10 @@ def _handle_server(
     except socket.gaierror as error:
         backend.set_server_error(server_id, 'socket.gaierror', check_datetime)
     finally:
-        opcua_client.disconnect()
+        await opcua_client.disconnect()
 
 
-if __name__ == '__main__':
+async def main():
     # wait for the backend to come online
     while not backend.available():
         time.sleep(30)
@@ -180,11 +196,13 @@ if __name__ == '__main__':
     while True:
         check_datetime = int(time.time())
         for server in backend.get_servers():
-            _handle_server(
+            await _handle_server(
                 server['id'],
                 server['url'],
                 server['root_node'],
                 check_datetime,
             )
+        await asyncio.sleep(update_interval)
 
-        time.sleep(update_interval)
+if __name__ == '__main__':
+    asyncio.run(main())
