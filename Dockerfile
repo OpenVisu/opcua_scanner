@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-FROM python:3.7-stretch
+FROM python:3.10-slim
 
 RUN mkdir -p /app
 COPY ./app /app
