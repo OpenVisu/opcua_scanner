@@ -1,4 +1,4 @@
-asyncua
+opcua
 cryptography
 sentry-sdk
 requests

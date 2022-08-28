@@ -23,11 +23,11 @@ from concurrent.futures import CancelledError
 
 import sentry_sdk
 
-import asyncua
-from asyncua import Node
-from asyncua.ua import UaStatusCodeError
-from asyncua.ua.uaerrors import BadNodeIdUnknown
-from asyncua.ua.uatypes import AccessLevel, VariantType
+import opcua
+from opcua import Node
+from opcua.ua import UaStatusCodeError
+from opcua.ua.uaerrors import BadNodeIdUnknown
+from opcua.ua.uatypes import AccessLevel, VariantType
 
 from backend import Backend
 
@@ -79,12 +79,12 @@ def _handle_extension_object(
         )
 
 
-async def _discover_children(node: Node, server_id: int, opcua_client: asyncua.Client, check_datetime: int) -> None:
+async def _discover_children(node: Node, server_id: int, opcua_client: opcua.Client, check_datetime: int) -> None:
     try:
         if node.nodeid.to_string() == 'i=84':
             path = '/'
         else:
-            path = '/' + '/'.join(await node.get_path(as_string=True))
+            path = '/' + '/'.join(node.get_path(as_string=True))
 
     except UaStatusCodeError as error:  # type: ignore
         path = f"UaStatusCodeError({error.code})"
@@ -98,12 +98,12 @@ async def _discover_children(node: Node, server_id: int, opcua_client: asyncua.C
     try:
         node_id: str = node.nodeid.to_string()
         node: Node = opcua_client.get_node(node_id)
-        writable = AccessLevel.CurrentWrite in await node.get_user_access_level()
-        readable = AccessLevel.CurrentRead in await node.get_user_access_level()
-        variant_type: VariantType = await node.read_data_type_as_variant_type()
+        writable = AccessLevel.CurrentWrite in node.get_user_access_level()
+        readable = AccessLevel.CurrentRead in node.get_user_access_level()
+        variant_type: VariantType = node.read_data_type_as_variant_type()
 
         try:
-            display_name: str = (await node.read_display_name()).Text
+            display_name: str = node.read_display_name().Text
         except UaStatusCodeError as error:  # type: ignore
             display_name = f"UaStatusCodeError({error.code})"
 
@@ -146,7 +146,7 @@ async def _discover_children(node: Node, server_id: int, opcua_client: asyncua.C
         print('BrokenPipeError')
         print(error)
 
-    children = await node.get_children()
+    children = node.get_children()
     for child_node in children:
         await _discover_children(child_node, server_id, opcua_client, check_datetime)
 
@@ -157,11 +157,11 @@ async def _handle_server(
     root_node_id: str,
     check_datetime: int
 ):
-    opcua_client: asyncua.Client = asyncua.Client(server_url, timeout=30)
+    opcua_client: opcua.Client = opcua.Client(server_url, timeout=30)
 
     try:
-        await opcua_client.connect()
-        await opcua_client.load_data_type_definitions()
+        opcua_client.connect()
+        opcua_client.load_data_type_definitions()
 
         try:
             if root_node_id != '':
@@ -172,7 +172,7 @@ async def _handle_server(
             if error.code == BadNodeIdUnknown.code:
                 root_node: Node = opcua_client.get_root_node()
 
-        await _discover_children(root_node, server_id, opcua_client, check_datetime)
+        _discover_children(root_node, server_id, opcua_client, check_datetime)
 
         backend.reset_server(server_id, check_datetime)
         backend.delete_outdated_nodes(server_id)
@@ -183,7 +183,7 @@ async def _handle_server(
     except socket.gaierror as error:
         backend.set_server_error(server_id, 'socket.gaierror', check_datetime)
     finally:
-        await opcua_client.disconnect()
+        opcua_client.disconnect()
 
 
 async def main():
