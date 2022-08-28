@@ -53,14 +53,14 @@ def _handle_extension_object(
     check_datetime: int,
 ):
     for key in value.__dict__:
-        if isinstance(value.__dict__[key], int):
-            subtype = VariantType.Int16
+        if isinstance(value.__dict__[key], bool):
+            subtype = VariantType.Boolean
         elif isinstance(value.__dict__[key], float):
             subtype = VariantType.Float
+        elif isinstance(value.__dict__[key], int):
+            subtype = VariantType.Int16
         elif isinstance(value.__dict__[key], str):
             subtype = VariantType.String
-        elif isinstance(value.__dict__[key], bool):
-            subtype = VariantType.Boolean
         elif isinstance(value.__dict__[key], datetime.datetime):
             subtype = VariantType.DateTime
         else:
