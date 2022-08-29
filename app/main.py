@@ -79,7 +79,7 @@ def _handle_extension_object(
         )
 
 
-async def _discover_children(node: Node, server_id: int, opcua_client: opcua.Client, check_datetime: int) -> None:
+def _discover_children(node: Node, server_id: int, opcua_client: opcua.Client, check_datetime: int) -> None:
     try:
         if node.nodeid.to_string() == 'i=84':
             path = '/'
@@ -100,10 +100,10 @@ async def _discover_children(node: Node, server_id: int, opcua_client: opcua.Cli
         node: Node = opcua_client.get_node(node_id)
         writable = AccessLevel.CurrentWrite in node.get_user_access_level()
         readable = AccessLevel.CurrentRead in node.get_user_access_level()
-        variant_type: VariantType = node.read_data_type_as_variant_type()
+        variant_type: VariantType = node.get_data_type_as_variant_type()
 
         try:
-            display_name: str = node.read_display_name().Text
+            display_name: str = node.get_display_name().Text
         except UaStatusCodeError as error:  # type: ignore
             display_name = f"UaStatusCodeError({error.code})"
 
@@ -148,7 +148,7 @@ async def _discover_children(node: Node, server_id: int, opcua_client: opcua.Cli
 
     children = node.get_children()
     for child_node in children:
-        await _discover_children(child_node, server_id, opcua_client, check_datetime)
+        _discover_children(child_node, server_id, opcua_client, check_datetime)
 
 
 async def _handle_server(
@@ -161,7 +161,8 @@ async def _handle_server(
 
     try:
         opcua_client.connect()
-        opcua_client.load_data_type_definitions()
+        opcua_client.load_type_definitions()
+        opcua_client.load_enums()
 
         try:
             if root_node_id != '':
