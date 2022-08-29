@@ -58,7 +58,7 @@ def _handle_extension_object(
         elif isinstance(value.__dict__[key], float):
             subtype = VariantType.Float
         elif isinstance(value.__dict__[key], int):
-            subtype = VariantType.Int16
+            subtype = VariantType.Int64
         elif isinstance(value.__dict__[key], str):
             subtype = VariantType.String
         elif isinstance(value.__dict__[key], datetime.datetime):
